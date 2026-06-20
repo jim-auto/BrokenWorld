@@ -151,6 +151,12 @@ button:hover {
   line-height: 1.5;
 }
 
+.dialogue-hint {
+  font-size: 0.6rem;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
 #tool-bar {
   display: flex;
   justify-content: space-between;

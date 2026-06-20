@@ -128,11 +128,11 @@ export class Game {
     if (this.dialogueQueue.length === 0) {
       this.dialogueActive = false;
       this.ui.dialogueBox.hidden = true;
-      this.input.setEnabled(true);
+      this.input.setMovementEnabled(true);
       return;
     }
     this.dialogueActive = true;
-    this.input.setEnabled(false);
+    this.input.setMovementEnabled(false);
     const line = this.dialogueQueue.shift();
     this.ui.dialogueBox.hidden = false;
     this.ui.speaker.textContent = line.speaker || '';
@@ -172,7 +172,12 @@ export class Game {
     tickAmbientEffects(this.effects, this.frame, this.mapId);
 
     if (this.dialogueActive) {
-      if (this.input.wasPressed('KeyE') || this.input.wasPressed('Enter') || this.input.wasPressed('Space')) {
+      if (
+        this.input.wasPressed('KeyE') ||
+        this.input.wasPressed('Enter') ||
+        this.input.wasPressed('NumpadEnter') ||
+        this.input.wasPressed('Space')
+      ) {
         this.advanceDialogue();
       }
       return;
@@ -180,14 +185,14 @@ export class Game {
 
     if (this.input.wasPressed('KeyJ')) {
       this.ui.journalPanel.hidden = !this.ui.journalPanel.hidden;
-      this.input.setEnabled(this.ui.journalPanel.hidden);
+      this.input.setMovementEnabled(this.ui.journalPanel.hidden);
       return;
     }
 
     if (!this.ui.journalPanel.hidden) {
       if (this.input.wasPressed('KeyJ') || this.input.wasPressed('Escape')) {
         this.ui.journalPanel.hidden = true;
-        this.input.setEnabled(true);
+        this.input.setMovementEnabled(true);
       }
       return;
     }

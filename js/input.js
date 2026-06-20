@@ -2,10 +2,9 @@ export class Input {
   constructor() {
     this.keys = new Set();
     this.justPressed = new Set();
-    this.enabled = true;
+    this.movementEnabled = true;
 
     window.addEventListener('keydown', (e) => {
-      if (!this.enabled) return;
       if (!this.keys.has(e.code)) this.justPressed.add(e.code);
       this.keys.add(e.code);
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
@@ -27,6 +26,7 @@ export class Input {
   }
 
   getMoveVector() {
+    if (!this.movementEnabled) return { dx: 0, dy: 0 };
     let dx = 0;
     let dy = 0;
     if (this.isDown('ArrowLeft') || this.isDown('KeyA')) dx -= 1;
@@ -40,11 +40,12 @@ export class Input {
     this.justPressed.clear();
   }
 
+  setMovementEnabled(v) {
+    this.movementEnabled = v;
+  }
+
+  /** @deprecated use setMovementEnabled */
   setEnabled(v) {
-    this.enabled = v;
-    if (!v) {
-      this.keys.clear();
-      this.justPressed.clear();
-    }
+    this.setMovementEnabled(v);
   }
 }

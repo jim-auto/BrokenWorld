@@ -37,6 +37,44 @@ test.describe('ゲーム起動', () => {
     await expect(page.locator('#phase-label')).toContainText(/序章/);
   });
 
+  test('「はじめる」直後でもスペースで会話を進められる', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('#start-btn').click();
+
+    await expect(page.locator('#dialogue-text')).toContainText(/指輪/);
+    await expect(page.locator('#start-btn')).toBeDisabled();
+
+    await page.keyboard.press('Space');
+    await expect(page.locator('#dialogue-box')).toBeHidden();
+
+    const active = await page.evaluate(() => window.__game.dialogueActive);
+    expect(active).toBe(false);
+  });
+
+  test('会話を閉じたあと移動できる', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('#start-btn').click();
+    await page.keyboard.press('Space');
+
+    await expect(page.locator('#dialogue-box')).toBeHidden();
+
+    const before = await page.evaluate(() => ({
+      x: window.__game.player.x,
+      y: window.__game.player.y,
+    }));
+
+    await page.keyboard.down('ArrowRight');
+    await page.waitForTimeout(400);
+    await page.keyboard.up('ArrowRight');
+
+    const after = await page.evaluate(() => ({
+      x: window.__game.player.x,
+      y: window.__game.player.y,
+    }));
+
+    expect(after.x).toBeGreaterThan(before.x);
+  });
+
   test('sprites.js に構文エラーがない', async ({ request }) => {
     const res = await request.get('/js/sprites.js');
     expect(res.ok()).toBeTruthy();

@@ -22,22 +22,40 @@ const titleRenderer = new Renderer(titleCanvas);
 titleRenderer.drawTitle();
 
 let game = null;
+let started = false;
 
-startBtn.addEventListener('click', () => {
+function beginGame() {
+  if (started) return;
+  started = true;
+  startBtn.disabled = true;
+  startBtn.blur();
+
   titleScreen.hidden = true;
   gameScreen.hidden = false;
   game = new Game(gameCanvas, ui);
+  window.__game = game;
+  gameCanvas.focus({ preventScroll: true });
   game.start();
+}
+
+startBtn.addEventListener('click', beginGame);
+
+gameCanvas.addEventListener('pointerdown', () => {
+  gameCanvas.focus({ preventScroll: true });
+});
+
+ui.dialogueBox.addEventListener('click', () => {
+  if (game?.dialogueActive) game.advanceDialogue();
 });
 
 ui.journalClose.addEventListener('click', () => {
   ui.journalPanel.hidden = true;
-  if (game) game.input.setEnabled(true);
+  if (game) game.input.setMovementEnabled(true);
 });
 
 document.addEventListener('keydown', (e) => {
   if (e.code === 'KeyJ' && game && !ui.journalPanel.hidden) {
     ui.journalPanel.hidden = true;
-    game.input.setEnabled(true);
+    game.input.setMovementEnabled(true);
   }
 });
