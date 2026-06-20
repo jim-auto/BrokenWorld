@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>十二番目の鐘が鳴る前に</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="title-screen">
+      <canvas id="title-canvas" width="480" height="270"></canvas>
+      <div class="title-overlay">
+        <h1>十二番目の鐘が鳴る前に</h1>
+        <p class="subtitle">壁が内と外を忘れ、出来事が途中を失う世界</p>
+        <button id="start-btn" type="button">はじめる</button>
+        <p class="hint">矢印 / WASD で移動 · E で調べる · スペースで道具 · J で手帳</p>
+      </div>
+    </header>
+
+    <main id="game-screen" hidden>
+      <canvas id="game-canvas" width="480" height="270"></canvas>
+      <div id="hud">
+        <div id="dialogue-box" hidden>
+          <span id="speaker"></span>
+          <p id="dialogue-text"></p>
+        </div>
+        <div id="tool-bar">
+          <span id="tool-label">道具: 白墨</span>
+          <span id="phase-label"></span>
+        </div>
+      </div>
+    </main>
+
+    <aside id="journal-panel" hidden>
+      <h2>手帳</h2>
+      <ul id="journal-list"></ul>
+      <button id="journal-close" type="button">閉じる</button>
+    </aside>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
