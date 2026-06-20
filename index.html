@@ -40,6 +40,22 @@
     </aside>
   </div>
 
+  <div id="load-error" hidden>
+    <p>ゲームの読み込みに失敗しました。</p>
+    <p id="load-error-detail"></p>
+    <a href="playtest.html">プレイテストガイド</a>
+  </div>
+
   <script type="module" src="js/main.js"></script>
+  <script>
+    window.addEventListener('error', (e) => {
+      const box = document.getElementById('load-error');
+      const detail = document.getElementById('load-error-detail');
+      if (box && detail) {
+        box.hidden = false;
+        detail.textContent = e.message || '不明なエラー';
+      }
+    });
+  </script>
 </body>
 </html>

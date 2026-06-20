@@ -29,6 +29,20 @@ html, body {
   padding: 16px;
 }
 
+#load-error {
+  max-width: 480px;
+  margin: 24px auto;
+  padding: 16px;
+  border: 2px solid #8a4a4a;
+  background: #2d2540;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+#load-error a {
+  color: var(--accent);
+}
+
 canvas {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
