@@ -24,6 +24,16 @@ npx serve .
 
 ブラウザで http://localhost:8080 を開く。
 
+## 自動テスト（Playwright）
+
+```bash
+npm install
+npx playwright install chromium
+npm test
+```
+
+起動・「はじめる」遷移・会話表示・攻略ページを検証します。
+
 ## GitHub Pages デプロイ
 
 1. リポジトリを GitHub に push

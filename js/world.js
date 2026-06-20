@@ -1,4 +1,4 @@
-import { SPRITES } from '../sprites.js';
+import { SPRITES } from './sprites.js';
 
 const SOLID = new Set(['wall', 'door', 'oneSided', 'roof']);
 
