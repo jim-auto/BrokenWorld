@@ -35,7 +35,8 @@ npx serve .
 
 ## 公開URL
 
-https://jim-auto.github.io/BrokenWorld/
+- **ゲーム**: https://jim-auto.github.io/BrokenWorld/
+- **プレイテストガイド（クリア攻略）**: https://jim-auto.github.io/BrokenWorld/playtest.html
 
 ## MVP 内容
 

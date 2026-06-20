@@ -91,6 +91,20 @@ button:hover {
   background: #3d3558;
 }
 
+.guide-link {
+  display: inline-block;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  text-decoration: none;
+  border-bottom: 1px solid var(--panel);
+}
+
+.guide-link:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 #game-screen {
   position: relative;
 }
