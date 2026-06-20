@@ -5,6 +5,7 @@ import { GameMap, Player, MovingEntity } from './world.js';
 import { buildMap } from './maps/index.js';
 import { DIALOGUES } from './maps/village.js';
 import { SALEM_DIALOGUES } from './maps/salem.js';
+import { MARGIN_DIALOGUES } from './maps/margin.js';
 import { SPRITES } from './sprites.js';
 import {
   checkBoundaryBreach,
@@ -14,6 +15,9 @@ import {
   triggerEarlyEndBell,
   attachNameplate,
   scheduleEcho,
+  tryInkFootprint,
+  tryUnderPath,
+  tryBoundaryReturn,
 } from './laws/index.js';
 import {
   createAmbientEffects,
@@ -33,6 +37,8 @@ const PHASES = {
   depart: '第一章 — 東への道',
   salem: '第二章 — 行列都市',
   salem_crown: '第二章 — 戴冠の矛盾',
+  margin: '第三章 — 余白',
+  margin_path: '第三章 — 書かれざる道',
   ending: '終章',
 };
 
@@ -65,7 +71,13 @@ export class Game {
       salemEntered: false,
       crowdHintShown: false,
       palaceEntered: false,
-      salemEnded: false,
+      marginEntered: false,
+      marginEarly: false,
+      footprintHintShown: false,
+      pathOpened: false,
+      miraMet: false,
+      gameComplete: false,
+      usedCracks: new Set(),
     };
 
     this.phase = 'intro';
@@ -157,7 +169,7 @@ export class Game {
   update() {
     this.frame++;
     this.map.updateDoors();
-    tickAmbientEffects(this.effects, this.frame);
+    tickAmbientEffects(this.effects, this.frame, this.mapId);
 
     if (this.dialogueActive) {
       if (this.input.wasPressed('KeyE') || this.input.wasPressed('Enter') || this.input.wasPressed('Space')) {
@@ -213,6 +225,21 @@ export class Game {
       }
       this.player.updateBox();
     }
+
+    if (this.mapId === 'margin') {
+      const tx = Math.floor(this.player.x + 0.5);
+      const ty = Math.floor(this.player.y + 0.5);
+      if (this.map.getTile(tx, ty) === 'marginCrack') {
+        if (tryUnderPath(this, tx, ty)) {
+          this.queueDialogues(MARGIN_DIALOGUES.under_path);
+        }
+      }
+      if (this.input.getMoveVector().dx !== 0 || this.input.getMoveVector().dy !== 0) {
+        if (tryBoundaryReturn(this, this.player)) {
+          this.queueDialogues(MARGIN_DIALOGUES.boundary);
+        }
+      }
+    }
   }
 
   updateMovers() {
@@ -255,20 +282,24 @@ export class Game {
     const py = this.player.y;
     for (const t of this.map.transitions) {
       if (t.requires === 'letterFound' && !this.flags.letterFound) continue;
-      if (
-        px >= t.x &&
-        px < t.x + t.w &&
-        py >= t.y &&
-        py < t.y + t.h
-      ) {
+      if (t.requires === 'earlyRoute' && !this.flags.earlyRoute) continue;
+      if (px >= t.x && px < t.x + t.w && py >= t.y && py < t.y + t.h) {
         const prev = this.mapId;
-        this.loadMap(t.to, t.spawn.x, t.spawn.y);
+        const targetData = buildMap(t.to);
+        const spawn = t.early && targetData.spawnEarly ? targetData.spawnEarly : t.spawn;
+        this.loadMap(t.to, spawn.x, spawn.y);
+
         if (t.to === 'salem' && !this.flags.salemEntered) {
           this.flags.salemEntered = true;
           this.setPhase('salem');
           this.queueDialogues(SALEM_DIALOGUES.enter);
         } else if (t.to === 'village' && prev === 'salem') {
           this.setPhase(this.flags.letterFound ? 'depart' : 'intro');
+        } else if (t.to === 'margin' && !this.flags.marginEntered) {
+          this.flags.marginEntered = true;
+          this.flags.marginEarly = !!t.early;
+          this.setPhase('margin');
+          this.queueDialogues(t.early ? MARGIN_DIALOGUES.enter_early : MARGIN_DIALOGUES.enter);
         }
         return;
       }
@@ -278,6 +309,7 @@ export class Game {
   checkTriggers() {
     if (this.mapId === 'village') this.checkVillageTriggers();
     else if (this.mapId === 'salem') this.checkSalemTriggers();
+    else if (this.mapId === 'margin') this.checkMarginTriggers();
 
     const px = Math.floor(this.player.x);
     const py = Math.floor(this.player.y);
@@ -347,13 +379,27 @@ export class Game {
       this.flags.palaceEntered = true;
       this.queueDialogues(SALEM_DIALOGUES.palace_enter);
     }
+  }
 
-    if (px >= 30 && py >= 18 && !this.flags.salemEnded) {
-      this.flags.salemEnded = true;
-      this.setPhase('ending');
-      this.queueDialogues(SALEM_DIALOGUES.salem_ending);
-      this.queueDialogues(SALEM_DIALOGUES.margin_enter);
+  checkMarginTriggers() {
+    if (!this.flags.footprintHintShown && this.player.y > 15) {
+      this.flags.footprintHintShown = true;
+      this.queueDialogues(MARGIN_DIALOGUES.footprint_hint);
+      this.setPhase('margin_path');
     }
+  }
+
+  resolveEnding() {
+    this.setPhase('ending');
+    const lawCount = this.journal.laws.size;
+    if (this.flags.marginEarly || (this.flags.earlyRoute && lawCount < 8)) {
+      this.queueDialogues(MARGIN_DIALOGUES.end_early);
+    } else if (lawCount >= 8) {
+      this.queueDialogues(MARGIN_DIALOGUES.end_keeper);
+    } else {
+      this.queueDialogues(MARGIN_DIALOGUES.end_normal);
+    }
+    this.flags.gameComplete = true;
   }
 
   interact() {
@@ -426,6 +472,15 @@ export class Game {
       return;
     }
 
+    if (this.mapId === 'margin' && npc.id === 'mira') {
+      if (!this.flags.miraMet) {
+        this.flags.miraMet = true;
+        this.queueDialogues(MARGIN_DIALOGUES.mira);
+        this.resolveEnding();
+      }
+      return;
+    }
+
     if (npc.id === 'guard_gate') {
       const crate = this.map.interactables.find((i) => i.type === 'crate' && i.role === 'noble');
       if (crate) {
@@ -476,6 +531,29 @@ export class Game {
     const px = Math.floor(this.player.x + 0.5 + this.player.dir.x * 0.6);
     const py = Math.floor(this.player.y + 0.5 + this.player.dir.y * 0.6);
 
+    if (this.mapId === 'margin' && this.player.tool === 'ink') {
+      let fx = px;
+      let fy = py;
+      const nearFp = this.map.footprints.find(
+        (f) => !f.inked && Math.abs(f.x - px) <= 1 && Math.abs(f.y - py) <= 1
+      );
+      if (nearFp) {
+        fx = nearFp.x;
+        fy = nearFp.y;
+      }
+      const result = tryInkFootprint(this, fx, fy);
+      if (result === 'opened') {
+        this.setPhase('margin_path');
+        this.queueDialogues(MARGIN_DIALOGUES.path_open);
+      } else if (result === 'inked') {
+        this.queueDialogue(null, '白墨で足跡を記録した。');
+      } else {
+        this.map.addMark(px, py);
+        this.queueDialogue(null, '白墨で印をつけた。');
+      }
+      return;
+    }
+
     if (this.player.tool === 'ink') {
       this.map.addMark(px, py);
       this.queueDialogue(null, '白墨で印をつけた。');
@@ -506,6 +584,7 @@ export class Game {
     const r = this.renderer;
     r.clear();
     r.drawMap(this.map, this.camX, this.camY);
+    r.drawFootprints(this.map.footprints, this.camX, this.camY);
     r.drawBreachGlow(this.map.breachWalls, this.camX, this.camY, this.frame);
     r.drawProps(this.props, this.camX, this.camY);
     r.drawAmbientEffects(this.effects, this.camX, this.camY);

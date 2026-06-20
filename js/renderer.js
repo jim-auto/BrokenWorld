@@ -45,6 +45,18 @@ export class Renderer {
     drawSprite(this.ctx, entity.sprite, sx + offsetX, sy + offsetY, SCALE, entity.alpha ?? 1);
   }
 
+  drawFootprints(footprints, camX, camY) {
+    for (const fp of footprints) {
+      if (fp.inked) continue;
+      const { x: sx, y: sy } = this.worldToScreen(fp.x, fp.y, camX, camY);
+      this.ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      this.ctx.strokeRect(sx + 6, sy + 10, 10, 5);
+      this.ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      this.ctx.fillRect(sx + 8, sy + 12, 3, 2);
+      this.ctx.fillRect(sx + 12, sy + 11, 3, 2);
+    }
+  }
+
   drawMarks(marks, camX, camY) {
     for (const mark of marks) {
       const { x: sx, y: sy } = this.worldToScreen(mark.x, mark.y, camX, camY);
@@ -65,6 +77,11 @@ export class Renderer {
 
   drawAmbientEffects(effects, camX, camY) {
     const ctx = this.ctx;
+    for (const g of effects.grassWobble || []) {
+      const { x: sx, y: sy } = this.worldToScreen(g.x, g.y, camX, camY);
+      ctx.fillStyle = `rgba(122,154,106,${g.life * 0.5})`;
+      ctx.fillRect(sx + 4, sy + 2, 6, 3);
+    }
     for (const stream of effects.flourStreams) {
       if (!stream.particles) continue;
       for (const p of stream.particles) {
@@ -119,7 +136,7 @@ export class Renderer {
     }
   }
 
-    drawTitle() {
+  drawTitle() {
     const ctx = this.ctx;
     ctx.fillStyle = PAL.K;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);

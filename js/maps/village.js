@@ -206,6 +206,7 @@ export function createVillageMap() {
     cageItemPos: { x: 37, y: 10 },
     transitions: [
       { x: 47, y: 13, w: 1, h: 4, to: 'salem', spawn: { x: 2.5, y: 11.5 }, requires: 'letterFound' },
+      { x: 36, y: 24, w: 10, h: 6, to: 'margin', spawn: { x: 3.5, y: 10.5 }, early: true },
     ],
     spawn: { x: 9, y: 10 },
     plazaEntry: { x: 28, y: 16 },

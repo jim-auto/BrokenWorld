@@ -115,6 +115,60 @@ export function attachNameplate(game, crate) {
   return true;
 }
 
+export function tryInkFootprint(game, x, y) {
+  if (game.mapId !== 'margin') return false;
+  const result = game.map.inkFootprint(x, y);
+  if (!result) return false;
+  if (result.pathOpened) {
+    game.journal.addObservation(LAW_OBSERVATIONS.ink_path);
+    if (!game.journal.hasLaw('ink_path')) {
+      game.journal.discoverLaw('ink_path', LAW_TEXTS.ink_path);
+    }
+    game.flags.pathOpened = true;
+    const mira = game.map.interactables.find((i) => i.id === 'mira');
+    if (mira) mira.hidden = false;
+    return 'opened';
+  }
+  return 'inked';
+}
+
+export function tryUnderPath(game, x, y) {
+  const crack = game.map.underPaths?.find((p) => p.x === x && p.y === y);
+  if (!crack || game.flags.usedCracks?.has(`${x},${y}`)) return false;
+  if (!game.flags.usedCracks) game.flags.usedCracks = new Set();
+  game.flags.usedCracks.add(`${x},${y}`);
+  game.teleportPlayer(crack.exit.x, crack.exit.y);
+  game.journal.addObservation(LAW_OBSERVATIONS.under_path);
+  if (!game.journal.hasLaw('under_path')) {
+    game.journal.discoverLaw('under_path', LAW_TEXTS.under_path);
+  }
+  return true;
+}
+
+export function tryBoundaryReturn(game, player) {
+  if (game.mapId !== 'margin') return false;
+  for (const edge of game.map.boundaryEdges || []) {
+    const px = player.x;
+    const py = player.y;
+    if (
+      px >= edge.x &&
+      px < edge.x + edge.w &&
+      py >= edge.y &&
+      py < edge.y + edge.h &&
+      player.dir.x === edge.facing.x &&
+      player.dir.y === edge.facing.y
+    ) {
+      game.teleportPlayer(edge.exit.x, edge.exit.y);
+      game.journal.addObservation(LAW_OBSERVATIONS.boundary_return);
+      if (!game.journal.hasLaw('boundary_return')) {
+        game.journal.discoverLaw('boundary_return', LAW_TEXTS.boundary_return);
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
 export function scheduleEcho(game, x, y) {
   game.echoQueue.push({ x, y, delay: 45 });
 }

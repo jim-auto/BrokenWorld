@@ -1,9 +1,11 @@
 import { createVillageMap } from './village.js';
 import { createSalemMap } from './salem.js';
+import { createMarginMap } from './margin.js';
 
 const MAP_BUILDERS = {
   village: createVillageMap,
   salem: createSalemMap,
+  margin: createMarginMap,
 };
 
 export function buildMap(id) {

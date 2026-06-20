@@ -51,6 +51,9 @@ export const LAW_TEXTS = {
   early_end_bell: '終わりの鐘を先に鳴らせば、式はすでに終わったことになる。',
   role_transfer: '名札は人より先に、門と役割を通す。',
   crowd_push: '人波の縫い目では、柵が内外を忘れる。',
+  ink_path: '白墨の印が重なると、まだない道が残る。',
+  under_path: '地面の綻びを落ちても、別の横道へ着く。',
+  boundary_return: '境界を見続けながら歩けば、反対側から戻れる。',
 };
 
 export const LAW_OBSERVATIONS = {
@@ -64,4 +67,7 @@ export const LAW_OBSERVATIONS = {
   early_end_bell: '終わりの鐘を先に鳴らすと、戴冠式は終了後の配置になった',
   role_transfer: '名札を付けた箱が、衛兵の検問を通過した',
   crowd_push: '祭列に押されながら門へ触れると、向こう側へ出た',
+  ink_path: '足跡の上に印を重ねると、虚空の上に道が残った',
+  under_path: '地面の綻びから落ちて、別の場所へ出た',
+  boundary_return: '境界の端を見続けながら歩き、反対側へ戻った',
 };

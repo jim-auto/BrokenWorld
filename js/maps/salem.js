@@ -126,6 +126,7 @@ export function createSalemMap() {
       { x: 0, y: 10, w: 1, h: 3, to: 'village', spawn: { x: 44.5, y: 14.5 } },
       { x: 0, y: 11, w: 1, h: 3, to: 'village', spawn: { x: 44.5, y: 14.5 } },
       { x: 0, y: 12, w: 1, h: 3, to: 'village', spawn: { x: 44.5, y: 14.5 } },
+      { x: 37, y: 18, w: 3, h: 6, to: 'margin', spawn: { x: 17.5, y: 19.5 } },
     ],
     spawn: { x: 2.5, y: 11.5 },
   };

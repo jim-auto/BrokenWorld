@@ -19,6 +19,12 @@ export class GameMap {
     this.id = data.id || 'unknown';
     this.transitions = data.transitions || [];
     this.eventState = data.eventState || null;
+    this.footprints = data.footprints ? [...data.footprints] : [];
+    this.latentPath = data.latentPath || [];
+    this.dynamicWalkable = new Set(data.dynamicWalkable || []);
+    this.boundaryEdges = data.boundaryEdges || [];
+    this.underPaths = data.underPaths || [];
+    this.pathUnlocked = false;
   }
 
   getTile(x, y) {
@@ -27,6 +33,7 @@ export class GameMap {
   }
 
   getTileSprite(x, y, tile) {
+    if (this.dynamicWalkable.has(`${x},${y}`)) return 'margin';
     if (tile === 'wall') {
       const breach = this.breachWalls.find((w) => w.x === x && w.y === y);
       if (breach) return 'wallBreach';
@@ -40,7 +47,10 @@ export class GameMap {
   }
 
   isSolid(x, y, player = null) {
+    if (this.dynamicWalkable.has(`${x},${y}`)) return false;
     const t = this.getTile(x, y);
+    if (t === 'void') return true;
+    if (t === 'shadow') return true;
     if (!SOLID.has(t)) return false;
     if (t === 'oneSided' && player?.facingAwayFrom({ x, y })) return false;
     if (t === 'door') {
@@ -118,6 +128,21 @@ export class GameMap {
 
   addMark(x, y) {
     this.marks.push({ x, y });
+  }
+
+  inkFootprint(x, y) {
+    const fp = this.footprints.find((f) => f.x === x && f.y === y && !f.inked);
+    if (!fp) return false;
+    fp.inked = true;
+    this.addMark(x, y);
+    const allInked = this.footprints.every((f) => f.inked);
+    if (allInked && !this.pathUnlocked) {
+      this.pathUnlocked = true;
+      for (const p of this.latentPath) {
+        this.dynamicWalkable.add(`${p.x},${p.y}`);
+      }
+    }
+    return { inked: true, pathOpened: allInked };
   }
 }
 

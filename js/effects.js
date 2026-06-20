@@ -21,7 +21,24 @@ export function createAmbientEffects(mapData) {
   };
 }
 
-export function tickAmbientEffects(effects, frame) {
+export function tickAmbientEffects(effects, frame, mapId) {
+  if (mapId === 'margin' && frame % 24 === 0) {
+    effects.grassWobble = effects.grassWobble || [];
+    if (effects.grassWobble.length < 12) {
+      effects.grassWobble.push({
+        x: Math.random() * 34 + 1,
+        y: Math.random() * 20 + 1,
+        life: 1,
+      });
+    }
+  }
+  if (effects.grassWobble) {
+    effects.grassWobble = effects.grassWobble.filter((g) => {
+      g.life -= 0.015;
+      return g.life > 0;
+    });
+  }
+
   if (effects.petalsActive && frame % 18 === 0 && effects.petals.length < 40) {
     effects.petals.push({
       x: 22 + Math.random() * 14,
@@ -123,6 +140,10 @@ export function getPhaseHint(phase, flags, journal) {
       return { main: '戴冠式の矛盾を観察する', sub: '鐘 · 名札 · 行列に注目' };
     case 'salem_crown':
       return { main: '宮殿へ入る道を作る', sub: '法則を組み合わせよ' };
+    case 'margin':
+      return { main: '未確定の大地', sub: '足跡 · 綻び · 境界に注目' };
+    case 'margin_path':
+      return { main: '道になる前の足跡へ', sub: '白墨で印を重ねる' };
     case 'ending':
       return { main: '道が開いた', sub: null };
     default:
