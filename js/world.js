@@ -16,6 +16,9 @@ export class GameMap {
     this.marks = [];
     this.cageItemPos = data.cageItemPos || null;
     this.cageDuplicate = false;
+    this.id = data.id || 'unknown';
+    this.transitions = data.transitions || [];
+    this.eventState = data.eventState || null;
   }
 
   getTile(x, y) {
@@ -96,6 +99,7 @@ export class GameMap {
     if (door) {
       door.open = true;
       door.closing = false;
+      door.locked = false;
       door.timer = door.autoClose ? 120 : 0;
     }
   }
@@ -177,6 +181,9 @@ export class MovingEntity {
     if (this.type === 'dog') {
       this.updateDog();
       return;
+    }
+    if (this.type === 'crowd') {
+      this.box = { x: this.x + 0.05, y: this.y + 0.15, w: 0.9, h: 0.7 };
     }
     if (this.wait > 0) {
       this.wait--;

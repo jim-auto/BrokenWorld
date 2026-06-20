@@ -2,13 +2,17 @@ import { Renderer } from './renderer.js';
 import { Input } from './input.js';
 import { Journal, LAW_OBSERVATIONS } from './journal.js';
 import { GameMap, Player, MovingEntity } from './world.js';
-import { createVillageMap, DIALOGUES } from './maps/village.js';
+import { buildMap } from './maps/index.js';
+import { DIALOGUES } from './maps/village.js';
+import { SALEM_DIALOGUES } from './maps/salem.js';
 import { SPRITES } from './sprites.js';
 import {
   checkBoundaryBreach,
   checkClosingDoor,
   checkOneSidedWall,
   triggerBellDuplicate,
+  triggerEarlyEndBell,
+  attachNameplate,
   scheduleEcho,
 } from './laws/index.js';
 import {
@@ -18,7 +22,7 @@ import {
   getPhaseHint,
   refreshFlourStreams,
 } from './effects.js';
-import { TILE, VIEW_TILES_X, VIEW_TILES_Y } from './palette.js';
+import { TILE, SCALE, VIEW_TILES_X, VIEW_TILES_Y } from './palette.js';
 
 const PHASES = {
   intro: '序章 — 指輪を届けに',
@@ -26,6 +30,9 @@ const PHASES = {
   reproduce: '発見 — 再現する',
   generalize: '発見 — 一般化する',
   synthesize: '発見 — 合成する',
+  depart: '第一章 — 東への道',
+  salem: '第二章 — 行列都市',
+  salem_crown: '第二章 — 戴冠の矛盾',
   ending: '終章',
 };
 
@@ -37,7 +44,8 @@ export class Game {
     this.journal = new Journal(ui.journalList);
     this.ui = ui;
 
-    this.mapData = createVillageMap();
+    this.mapId = 'village';
+    this.mapData = buildMap(this.mapId);
     this.map = new GameMap(this.mapData);
     this.player = new Player(this.mapData.spawn.x, this.mapData.spawn.y);
     this.movers = this.mapData.entities.map((e) => new MovingEntity(e));
@@ -54,18 +62,18 @@ export class Game {
       earlyRoute: false,
       reproduceHintShown: false,
       dogHintShown: false,
+      salemEntered: false,
+      crowdHintShown: false,
+      palaceEntered: false,
+      salemEnded: false,
     };
 
     this.phase = 'intro';
     this.dialogueQueue = [];
     this.dialogueActive = false;
-    this.dialogueIndex = 0;
-    this.currentDialogue = null;
     this.running = false;
-    this.endingShown = false;
     this.frame = 0;
     this.stablePoint = { ...this.mapData.spawn };
-
     this.camX = 0;
     this.camY = 0;
   }
@@ -81,6 +89,17 @@ export class Game {
   setPhase(phase) {
     this.phase = phase;
     this.ui.phaseLabel.textContent = PHASES[phase] || '';
+  }
+
+  loadMap(mapId, x, y) {
+    this.mapId = mapId;
+    this.mapData = buildMap(mapId);
+    this.map = new GameMap(this.mapData);
+    this.movers = this.mapData.entities.map((e) => new MovingEntity(e));
+    this.props = this.mapData.props || [];
+    this.effects = createAmbientEffects(this.mapData);
+    this.dust = [];
+    this.teleportPlayer(x, y);
   }
 
   queueDialogue(speaker, text) {
@@ -166,6 +185,7 @@ export class Game {
     this.updateLaws();
     this.updateDust();
     this.updateEcho();
+    this.checkTransitions();
     this.checkTriggers();
 
     if (this.input.wasPressed('KeyE')) this.interact();
@@ -230,11 +250,46 @@ export class Game {
     this.echoPlates = this.echoPlates.filter((p) => --p.life > 0);
   }
 
+  checkTransitions() {
+    const px = this.player.x;
+    const py = this.player.y;
+    for (const t of this.map.transitions) {
+      if (t.requires === 'letterFound' && !this.flags.letterFound) continue;
+      if (
+        px >= t.x &&
+        px < t.x + t.w &&
+        py >= t.y &&
+        py < t.y + t.h
+      ) {
+        const prev = this.mapId;
+        this.loadMap(t.to, t.spawn.x, t.spawn.y);
+        if (t.to === 'salem' && !this.flags.salemEntered) {
+          this.flags.salemEntered = true;
+          this.setPhase('salem');
+          this.queueDialogues(SALEM_DIALOGUES.enter);
+        } else if (t.to === 'village' && prev === 'salem') {
+          this.setPhase(this.flags.letterFound ? 'depart' : 'intro');
+        }
+        return;
+      }
+    }
+  }
+
   checkTriggers() {
+    if (this.mapId === 'village') this.checkVillageTriggers();
+    else if (this.mapId === 'salem') this.checkSalemTriggers();
+
+    const px = Math.floor(this.player.x);
+    const py = Math.floor(this.player.y);
+    if (this.map.getTile(px, py) === 'void') {
+      this.teleportPlayer(this.stablePoint.x, this.stablePoint.y);
+    }
+  }
+
+  checkVillageTriggers() {
     const px = Math.floor(this.player.x);
     const py = Math.floor(this.player.y);
 
-    // 広場 — イベント飛ばし
     if (!this.flags.weddingEnded && px >= 22 && px <= 35 && py >= 10 && py <= 17) {
       this.flags.weddingEnded = true;
       activatePetals(this.effects);
@@ -243,7 +298,6 @@ export class Game {
       this.queueDialogues(DIALOGUES.wedding_skipped);
     }
 
-    // 犬の手がかり（視覚＋近づいたときだけ）
     const dog = this.movers.find((m) => m.id === 'dog');
     if (dog?.sniffing && !this.flags.dogHintShown) {
       const dist = Math.hypot(this.player.x - dog.x, this.player.y - dog.y);
@@ -253,7 +307,6 @@ export class Game {
       }
     }
 
-    // 再現ヒント
     if (this.phase === 'accident' && !this.flags.reproduceHintShown) {
       const inWarehouse = px >= 14 && px <= 19 && py >= 5 && py <= 9;
       if (inWarehouse) {
@@ -262,26 +315,44 @@ export class Game {
       }
     }
 
-    // 手紙発見
     const letter = this.map.interactables.find((i) => i.id === 'letter');
     if (letter && !letter.hidden && !this.flags.letterFound) {
       this.flags.letterFound = true;
-      this.setPhase('ending');
+      this.setPhase('depart');
       this.queueDialogues(DIALOGUES.letter);
-      this.queueDialogues(DIALOGUES.ending);
-      this.endingShown = true;
     }
 
-    // 早期到達 — 余白でミラ
     if (px >= 36 && py >= 24 && !this.flags.earlyRoute) {
       this.flags.earlyRoute = true;
       const mira = this.map.interactables.find((i) => i.id === 'mira_ghost');
       if (mira) mira.hidden = false;
     }
+  }
 
-    // 不正位置復帰
-    if (this.map.getTile(px, py) === 'void') {
-      this.teleportPlayer(this.stablePoint.x, this.stablePoint.y);
+  checkSalemTriggers() {
+    const px = Math.floor(this.player.x);
+    const py = Math.floor(this.player.y);
+
+    const parade = this.movers.find((m) => m.id === 'parade');
+    if (parade?.moving && !this.flags.crowdHintShown) {
+      const dist = Math.hypot(this.player.x - parade.x, this.player.y - parade.y);
+      if (dist < 4 && px >= 20) {
+        this.flags.crowdHintShown = true;
+        this.queueDialogues(SALEM_DIALOGUES.crowd_hint);
+      }
+    }
+
+    const trace = this.map.interactables.find((i) => i.id === 'mira_trace');
+    if (trace && !trace.hidden && !this.flags.palaceEntered) {
+      this.flags.palaceEntered = true;
+      this.queueDialogues(SALEM_DIALOGUES.palace_enter);
+    }
+
+    if (px >= 30 && py >= 18 && !this.flags.salemEnded) {
+      this.flags.salemEnded = true;
+      this.setPhase('ending');
+      this.queueDialogues(SALEM_DIALOGUES.salem_ending);
+      this.queueDialogues(SALEM_DIALOGUES.margin_enter);
     }
   }
 
@@ -293,30 +364,20 @@ export class Game {
       (i) => i.type === 'npc' && !i.hidden && i.x === px && i.y === py
     );
     if (npc) {
-      if (npc.id === 'baker') {
-        const lines = this.flags.cartBreachSeen ? DIALOGUES.baker_after_breach : DIALOGUES.baker_normal;
-        this.queueDialogues(lines);
-      } else if (npc.id === 'mira_ghost') {
-        this.queueDialogues(DIALOGUES.early_mira);
-      } else {
-        this.queueDialogue(npc.name, '……');
-      }
+      this.interactNpc(npc);
       return;
     }
 
     const bell = this.map.interactables.find((i) => i.type === 'bell' && i.x === px && i.y === py);
     if (bell) {
-      triggerBellDuplicate(this);
-      this.queueDialogue(null, '鐘が鳴った。音が少し、足りない。');
-      if (this.journal.hasLaw('moving_push') && this.journal.hasLaw('closing_door')) {
-        this.setPhase('synthesize');
-        this.map.openDoor('water_door');
-        const whBreach = this.map.breachWalls.find((w) => w.id === 'warehouse_wall');
-        if (whBreach) whBreach.active = true;
-        refreshFlourStreams(this.effects, this.map.breachWalls);
-        const letter = this.map.interactables.find((i) => i.id === 'letter');
-        if (letter) letter.hidden = false;
-        this.queueDialogue('イオ', '鐘の瞬間に扉を閉じれば——鐘楼の「閉じる前」へ入れるかもしれない。');
+      this.interactBell(bell);
+      return;
+    }
+
+    const crate = this.map.interactables.find((i) => i.type === 'crate' && i.x === px && i.y === py);
+    if (crate && this.player.carrying?.name === '名札') {
+      if (attachNameplate(this, crate)) {
+        this.queueDialogues(SALEM_DIALOGUES.role_transfer);
       }
       return;
     }
@@ -325,7 +386,7 @@ export class Game {
       (i) => i.pickup && !i.hidden && i.x === px && i.y === py
     );
     if (item && !this.player.carrying) {
-      this.player.carrying = item;
+      this.player.carrying = { ...item, sprite: item.sprite };
       item.hidden = true;
       this.queueDialogue('イオ', `${item.name}を手に取った。`);
       return;
@@ -338,30 +399,96 @@ export class Game {
       this.map.openDoor('water_door');
       this.queueDialogue(null, '水車扉が動き出した。');
     }
+
+    const palaceDoor = this.map.closingDoors.find((d) => d.id === 'palace_door');
+    if (palaceDoor && px === palaceDoor.x && py === palaceDoor.y) {
+      if (this.map.eventState?.coronationEnded) {
+        this.map.openDoor('palace_door');
+        const trace = this.map.interactables.find((i) => i.id === 'mira_trace');
+        if (trace) trace.hidden = false;
+        this.queueDialogue(null, '宮殿の扉が開いた。');
+      } else {
+        this.queueDialogue('衛兵', '戴冠式が終わっていない。……いや、もう終わったのか？');
+      }
+    }
+  }
+
+  interactNpc(npc) {
+    if (this.mapId === 'village') {
+      if (npc.id === 'baker') {
+        const lines = this.flags.cartBreachSeen ? DIALOGUES.baker_after_breach : DIALOGUES.baker_normal;
+        this.queueDialogues(lines);
+      } else if (npc.id === 'mira_ghost') {
+        this.queueDialogues(DIALOGUES.early_mira);
+      } else {
+        this.queueDialogue(npc.name, '……');
+      }
+      return;
+    }
+
+    if (npc.id === 'guard_gate') {
+      const crate = this.map.interactables.find((i) => i.type === 'crate' && i.role === 'noble');
+      if (crate) {
+        this.map.openDoor('palace_door');
+        const trace = this.map.interactables.find((i) => i.id === 'mira_trace');
+        if (trace) trace.hidden = false;
+        this.queueDialogue('衛兵', '貴族の荷物を通す。');
+      } else {
+        this.queueDialogue('衛兵', '王の命令を守る。王は、まだいない。');
+      }
+      return;
+    }
+
+    if (npc.id === 'herald' && this.map.eventState?.coronationEnded) {
+      this.queueDialogue('伝令', '戴冠は終わった。新しい王は……まだ、いない。');
+      return;
+    }
+
+    this.queueDialogue(npc.name, '……');
+  }
+
+  interactBell(bell) {
+    if (this.mapId === 'salem') {
+      if (bell.bellKind === 'end') {
+        triggerEarlyEndBell(this);
+        this.queueDialogues(SALEM_DIALOGUES.coronation_skip);
+      } else {
+        this.queueDialogue(null, '始まりの鐘は、すでに鳴り終わっている。');
+      }
+      return;
+    }
+
+    triggerBellDuplicate(this);
+    this.queueDialogue(null, '鐘が鳴った。音が少し、足りない。');
+    if (this.journal.hasLaw('moving_push') && this.journal.hasLaw('closing_door')) {
+      this.setPhase('synthesize');
+      this.map.openDoor('water_door');
+      const whBreach = this.map.breachWalls.find((w) => w.id === 'warehouse_wall');
+      if (whBreach) whBreach.active = true;
+      refreshFlourStreams(this.effects, this.map.breachWalls);
+      const letter = this.map.interactables.find((i) => i.id === 'letter');
+      if (letter) letter.hidden = false;
+      this.queueDialogue('イオ', '鐘の瞬間に扉を閉じれば——倉庫の奥に何かが残っている。');
+    }
   }
 
   useTool() {
-    const tool = this.player.tool;
     const px = Math.floor(this.player.x + 0.5 + this.player.dir.x * 0.6);
     const py = Math.floor(this.player.y + 0.5 + this.player.dir.y * 0.6);
 
-    if (tool === 'ink') {
+    if (this.player.tool === 'ink') {
       this.map.addMark(px, py);
       this.queueDialogue(null, '白墨で印をつけた。');
-    } else if (tool === 'pebble') {
+      return;
+    }
+
+    if (this.player.tool === 'pebble') {
       const tile = this.map.getTile(px, py);
       if (tile === 'oneSided' || tile === 'wall') {
         this.queueDialogue(null, '小石を投げた。向こう側から、かすかな音が返った。');
         this.journal.addObservation(LAW_OBSERVATIONS.one_sided_smoke);
       } else {
         this.queueDialogue(null, '小石が地面に落ちた。');
-      }
-    }
-
-    if (this.player.carrying?.id === 'flour') {
-      const cart = this.movers.find((m) => m.id === 'cart2');
-      if (cart && Math.abs(cart.x - px) < 2 && Math.abs(cart.y - py) < 2) {
-        this.queueDialogue('イオ', '粉袋を荷車の近くに置いた。');
       }
     }
   }
@@ -393,19 +520,16 @@ export class Game {
 
     for (const inter of this.map.interactables) {
       if (inter.hidden || !inter.sprite) continue;
-      r.drawEntity(
-        { x: inter.x, y: inter.y, sprite: inter.sprite },
-        this.camX,
-        this.camY
-      );
+      r.drawEntity({ x: inter.x, y: inter.y, sprite: inter.sprite }, this.camX, this.camY);
+      if (inter.role === 'noble') {
+        const { x, y } = r.worldToScreen(inter.x, inter.y, this.camX, this.camY);
+        r.ctx.fillStyle = '#c9a55c';
+        r.ctx.fillRect(x + 20, y + 2, 8, 6);
+      }
     }
 
     if (this.map.cageDuplicate) {
-      r.drawEntity(
-        { x: 36, y: 10, sprite: SPRITES.ring, alpha: 0.8 },
-        this.camX,
-        this.camY
-      );
+      r.drawEntity({ x: 36, y: 10, sprite: SPRITES.ring, alpha: 0.8 }, this.camX, this.camY);
     }
 
     for (const mover of this.movers) {

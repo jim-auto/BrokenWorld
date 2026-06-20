@@ -117,6 +117,12 @@ export function getPhaseHint(phase, flags, journal) {
       return { main: '別の「閉じるもの」を探す', sub: '水車の近くへ' };
     case 'synthesize':
       return { main: '二つの法則を重ねる', sub: '鐘楼で鐘を鳴らす' };
+    case 'depart':
+      return { main: '東の道へ', sub: '地図に残る石畳を辿れ' };
+    case 'salem':
+      return { main: '戴冠式の矛盾を観察する', sub: '鐘 · 名札 · 行列に注目' };
+    case 'salem_crown':
+      return { main: '宮殿へ入る道を作る', sub: '法則を組み合わせよ' };
     case 'ending':
       return { main: '道が開いた', sub: null };
     default:

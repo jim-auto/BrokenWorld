@@ -48,6 +48,9 @@ export const LAW_TEXTS = {
   bell_duplicate: '鐘が鳴る瞬間、籠の中身は二つ残る。',
   one_sided: '一方からだけ固い壁は、風と音だけ先に届く。',
   delayed_echo: '足音は、歩いたあと少し遅れてもう一度響く。',
+  early_end_bell: '終わりの鐘を先に鳴らせば、式はすでに終わったことになる。',
+  role_transfer: '名札は人より先に、門と役割を通す。',
+  crowd_push: '人波の縫い目では、柵が内外を忘れる。',
 };
 
 export const LAW_OBSERVATIONS = {
@@ -58,4 +61,7 @@ export const LAW_OBSERVATIONS = {
   bell_duplicate: '鐘の前後で籠の中身が違った',
   one_sided_smoke: '煙だけが壁を通過している',
   delayed_echo: '足音が遅れてもう一度床を鳴らした',
+  early_end_bell: '終わりの鐘を先に鳴らすと、戴冠式は終了後の配置になった',
+  role_transfer: '名札を付けた箱が、衛兵の検問を通過した',
+  crowd_push: '祭列に押されながら門へ触れると、向こう側へ出た',
 };

@@ -95,6 +95,13 @@ function buildTiles() {
     for (let x = 36; x < 46; x++) tiles[y][x] = 'margin';
   }
 
+  // 東への道（手紙発見後に開く）
+  for (let y = 13; y < 17; y++) {
+    tiles[y][45] = 'cobble';
+    tiles[y][46] = 'cobble';
+    tiles[y][47] = 'cobble';
+  }
+
   return tiles;
 }
 
@@ -197,6 +204,9 @@ export function createVillageMap() {
       { x: 42, y: 12, exitX: 43.5, exitY: 12.5 },
     ],
     cageItemPos: { x: 37, y: 10 },
+    transitions: [
+      { x: 47, y: 13, w: 1, h: 4, to: 'salem', spawn: { x: 2.5, y: 11.5 }, requires: 'letterFound' },
+    ],
     spawn: { x: 9, y: 10 },
     plazaEntry: { x: 28, y: 16 },
     bellTowerEntry: { x: 38, y: 13 },
@@ -229,6 +239,7 @@ export const DIALOGUES = {
   letter: [
     { speaker: '手紙', text: '「道が拒む場所を歩け」—— ミラ' },
     { speaker: 'イオ', text: '壁の向こうに、姉さんの白墨の印があった。' },
+    { speaker: 'イオ', text: '東の石畳が、まだ地図に残っている。セレムへ向かうべきだ。' },
   ],
   ending: [
     { speaker: 'イオ', text: '世界は壊れている。壊れていると思っているのは、私だけかもしれない。' },
